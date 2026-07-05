@@ -1,47 +1,20 @@
-import express from 'express';
+import 'dotenv/config';
+import express, { json } from 'express';
 import cors from 'cors';
+import connectDB from './config/db.js';
+import authRoutes from './routes/auth.js';
 
 const app = express();
-const PORT = 5000;
 
-app.use(cors());
-app.use(express.json());
+// Connect to MongoDB
+connectDB();
 
-const usersTableMock = [];
+// Global Middlewares
+app.use(cors()); // Permits React app running on port 5173 to contact this API safely
+app.use(json()); // Parses incoming raw JSON requests directly onto req.body
 
-app.post('/api/register', (req, res) => {
-  const { name, email, password } = req.body;
+// Route Bindings
+app.use('/api/auth', authRoutes);
 
-  if (!name || !email || !password) {
-    return res.status(400).json({ message: 'All fields are required.' });
-  }
-
-  const userExists = usersTableMock.find(user => user.email === email);
-  if (userExists) {
-    return res.status(400).json({ message: 'User already exists.' });
-  }
-
-  const newUser = { id: Date.now(), name, email, password };
-  usersTableMock.push(newUser);
-
-  res.status(201).json({ message: 'Registration successful!', user: { name, email } });
-});
-
-app.post('/api/login', (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ message: 'All fields are required.' });
-  }
-
-  const user = usersTableMock.find(u => u.email === email);
-  if (!user || user.password !== password) {
-    return res.status(401).json({ message: 'Invalid credentials.' });
-  }
-
-  res.status(200).json({ message: 'Login successful!', user: { name: user.name, email: user.email } });
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running smoothly on http://localhost:${PORT}`);
-});
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server running stable on port ${PORT}`));

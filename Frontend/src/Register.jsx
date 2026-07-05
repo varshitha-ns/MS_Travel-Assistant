@@ -12,10 +12,29 @@ export default function Register({ togglePage }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Registration Data:', formData);
-  };
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  try {
+    const response = await fetch('http://localhost:5000/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+
+    const data = await response.json();
+    
+    if (response.ok) {
+      alert(data.message); // Displays "Account created successfully!"
+      togglePage();        // Swaps views automatically to Login
+    } else {
+      // Handles field validation errors array or text fallback strings
+      alert(data.message || JSON.stringify(data.errors));
+    }
+  } catch (error) {
+    console.error("Networking communication failure:", error);
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4">
