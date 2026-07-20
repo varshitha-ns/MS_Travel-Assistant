@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import nodemailer from 'nodemailer';
 import { z } from 'zod';
 
+// Zod Input Validation Schema Core Configurations
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters long"),
   email: z.string().email("Invalid email address format"),
@@ -13,6 +14,12 @@ const registerSchema = z.object({
   path: ["confirmPassword"]
 });
 
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address format"),
+  password: z.string().min(1, "Password is required")
+});
+
+// Configure Nodemailer Transport Engine
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -21,6 +28,9 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+/**
+ * AUTH CONTROLLER: USER REGISTRATION PIPELINE
+ */
 export const registerUser = async (req, res) => {
   try {
     const validation = registerSchema.safeParse(req.body);
@@ -73,5 +83,46 @@ export const registerUser = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+/**
+ * AUTH CONTROLLER: USER LOGIN VERIFICATION PIPELINE
+ */
+export const loginUser = async (req, res) => {
+  try {
+    // 1. Run dynamic input structural validation via Zod
+    const validation = loginSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ errors: validation.error.format() });
+    }
+
+    const { email, password } = validation.data;
+
+    // 2. Lookup if the database contains the target user record profile
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email credentials or password." });
+    }
+
+    // 3. Compare raw input text password hash metrics with stored database record metrics
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid email credentials or password." });
+    }
+
+    // 4. Return structural success profile object back over the wire
+    return res.status(200).json({
+      message: "Login successful!",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email
+      }
+    });
+
+  } catch (error) {
+    console.error("🚨 Login validation pipeline execution failure:", error);
+    return res.status(500).json({ message: "Internal server error encountered during login validation processing loop." });
   }
 };

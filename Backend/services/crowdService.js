@@ -1,7 +1,3 @@
-/**
- * Reusable Audience Foot Traffic Analysis Service
- * Communicates with BestTime.app API Endpoints
- */
 export const fetchLiveCrowdMetrics = async (locationName) => {
   try {
     const apiKey = process.env.BESTTIME_API_KEY;
@@ -10,12 +6,15 @@ export const fetchLiveCrowdMetrics = async (locationName) => {
       throw new Error("Missing BESTTIME_API_KEY environment variable.");
     }
     
-    // Hits the direct forecasting query url endpoint
-    const url = `https://besttime.app/api/v1/forecasts?api_key_private=${apiKey}&venue_name=${encodeURIComponent(locationName)}&venue_address=${encodeURIComponent(locationName)}`;
+    // Clean up location casing
+    const queryLocation = locationName.trim().toLowerCase();
+    
+    // BestTime venue/name endpoint reads predictions via GET query attributes
+    const url = `https://besttime.app/api/v1/forecasts/venue/name?api_key=${apiKey}&venue_name=${encodeURIComponent(queryLocation)}`;
     
     const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      method: 'GET', // ⚡ CHANGED FROM POST TO GET TO SOLVE THE 405 ERROR
+      headers: { 'Accept': 'application/json' }
     });
     
     if (!response.ok) {
@@ -23,26 +22,22 @@ export const fetchLiveCrowdMetrics = async (locationName) => {
     }
     
     const data = await response.json();
-    
-    // Extract calculated day data matching current baseline operational bounds
-    const dayAnalysis = data.analysis?.[0] || {};
-    const globalStatus = data.venue_info?.venue_type || "Public Location";
+    const currentHourData = data.analysis?.hour_analysis?.[0] || {};
+    const globalStatus = data.analysis?.venue_forecasted_status_txt || "Unknown";
     
     return {
-      densityPercentage: dayAnalysis.day_info?.day_text ? "Analyzed" : "Normal", 
-      busynessScore: dayAnalysis.day_info?.day_rank_mean ?? 45, // Relative scale evaluation
-      statusAssessment: `Active status tracking operational for ${globalStatus}`,
+      densityPercentage: currentHourData.intensity_txt || null, 
+      busynessScore: currentHourData.intensity_nr ?? null,
+      statusAssessment: globalStatus,
       rawSuccess: true
     };
     
   } catch (error) {
     console.error(`🚨 Crowd density tracking failed for location [${locationName}]:`, error.message);
-    
-    // Safety Fallback Object preventing code disruption if venue doesn't exist in registry
     return {
-      densityPercentage: "Normal",
-      busynessScore: 40,
-      statusAssessment: "Standard operational crowds verified",
+      densityPercentage: null,
+      busynessScore: null,
+      statusAssessment: `Crowd tracking unavailable (${error.message})`,
       rawSuccess: false
     };
   }

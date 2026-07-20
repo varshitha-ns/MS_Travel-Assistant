@@ -1,18 +1,50 @@
 import React, { useState } from 'react';
 
-export default function Login({ togglePage }) {
+export default function Login({ togglePage, onLoginSuccess }) {
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    console.log('Login Data:', formData);
+    
+    if (!formData.email || !formData.password) {
+      setError('Please fill in all fields');
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        onLoginSuccess(data);
+      } else {
+        setError(data.message || 'Login failed. Invalid email or password.');
+      }
+    } catch (err) {
+      console.error('login error:', err);
+      setError('An error occurred during login. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -23,7 +55,7 @@ export default function Login({ togglePage }) {
           <p className="text-slate-400 mt-2 text-sm">Sign in to manage your travels</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleLoginSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">Email Address</label>
             <input
@@ -39,7 +71,7 @@ export default function Login({ togglePage }) {
 
           <div>
             <div className="flex justify-between items-center mb-1.5">
-              <label className="block text-sm font-medium text-slate-300">Password</label>
+              <label className="block text-sm font-medium text-slate-3 omnibus-300">Password</label>
               <a href="#" className="text-xs text-blue-400 hover:underline">Forgot password?</a>
             </div>
             <input
@@ -53,11 +85,18 @@ export default function Login({ togglePage }) {
             />
           </div>
 
+          {error && (
+            <div className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 py-2 rounded-lg">
+              {error}
+            </div>
+          )}
+
           <button
             type="submit"
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800 mt-2"
+            disabled={loading}
+            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800 mt-2"
           >
-            Sign In
+            {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
 
