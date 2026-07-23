@@ -1,6 +1,6 @@
 import { HfInference } from '@huggingface/inference';
 import { getLiveWeather } from '../services/weatherService.js';
-import { fetchLiveCrowdMetrics } from '../services/crowdService.js';
+
 
 const hf = new HfInference(process.env.HF_ACCESS_TOKEN);
 
@@ -32,17 +32,13 @@ export const generateItinerary = async (req, res) => {
     console.log(`🤖 Itinerary Agent extracted location target: [${location}]`);
 
     // ─── STEP 2: SAFE CONCURRENT TOOL RESOLUTION ───
-    const [weather, crowd] = await Promise.all([
-      getLiveWeather(location).catch(() => ({ condition: null, temperature: null, rawSuccess: false })),
-      fetchLiveCrowdMetrics(location).catch(() => ({ busynessScore: null, rawSuccess: false }))
-    ]);
-
+  const weather = await getLiveWeather(location);
     // ─── STEP 3: STRATEGIC ITINERARY GENERATION ───
     const agentPrompt = `
       You are an autonomous travel coordinator agent.
       Destination Target: ${location}
       Live Weather Conditions: ${JSON.stringify(weather)}
-      Live Crowd Analytics: ${JSON.stringify(crowd)}
+     
       User Extra Input: ${userPreferences || "None"}
 
       CRITICAL LOOPS:
